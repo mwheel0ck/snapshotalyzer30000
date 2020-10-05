@@ -13,10 +13,71 @@ def filter_instances(project):
         instances = ec2.instances.all()
    return instances
 
+
 @click.group()
+def cli():
+    """Shotty manages snapshots"""
+
+@cli.group('instances')
 def instances():
     """Commands for instances"""
+
+@cli.group('volumes')
+def volumes():
+    """Commands for volumes"""
+
+@cli.group('snapshots')
+def snapshots():
+    """Commands for volumes"""
+
+@snapshots.command('list')
+@click.option('--project', default=None, help="Only volumes for project (tag Project:<name>)")
+def list_snapshots(project):
+    """List EC2 Snapshots"""
+
+    instances = filter_instances(project)
+    for i in instances:
+        for v in i.volumes.all():
+            for s in v.snapshots.all():
+                print (", ".join((
+                s.id,
+                v.id,
+                i.id,
+                s.state, 
+                s.progress,
+                s.start_time.strftime("%c")
+                )))
+    return
+
+@volumes.command('list')
+@click.option('--project', default=None, help="Only volumes for project (tag Project:<name>)")
+def list_volumes(project):
+    """List EC2 Volumes"""
     
+    instances = filter_instances(project)
+    for i in instances:
+        for v in i.volumes.all():
+            print (", ".join((
+            v.id,
+            i.id,
+            v.state, 
+            str(v.size) + "GiB",
+            v.encrypted and "Encrypted" or "Not Encrypted"
+            )))
+    return
+
+@instances.command('snapshot')
+@click.option('--project', default=None,
+    help="Only instances for project (tag Project:<name>)")
+def snapshot_instance(project):
+    """Snapshot EC2 Instance"""
+    instances = filter_instances(project)
+    for i in instances:
+        for v in i.volumes.all():
+            print("Snapshotting {0}...".format(v.id))
+            v.create_snapshot(Description="Created by Snapshotalyzer30000")
+    return       
+      
 
 @instances.command('list')
 @click.option('--project', default=None,
@@ -56,7 +117,7 @@ def stop_instances(project):
         i.start()
     return 
 if __name__ == '__main__':
-    instances()
+    cli()
     
     
     
